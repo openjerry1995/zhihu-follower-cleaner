@@ -1,99 +1,64 @@
-# Zhihu Follower Cleaner
+# 知乎粉丝清理器
 
-A Chrome extension that helps you remove Zhihu followers one by one with anti-detection features.
+一款 Chrome 扩展，通过批量拉黑的方式帮你移除知乎粉丝。支持自动翻页收集所有粉丝，逐个拉黑，带有随机延迟防检测。
 
-## Features
+## 功能
 
-- **Manifest V3** compliant Chrome extension
-- **Popup UI** with:
-  - Start/Stop control buttons
-  - Configurable delay (500-10000ms, default 2000ms)
-  - Jitter setting (±20% randomization by default)
-  - Live counter showing removed followers
-  - Activity log with timestamps
-- **Anti-detection**: Randomized delays prevent bot detection
-- **Smart navigation**: Auto-navigates to followers page
-- **Error handling**: Pauses on errors and shows detailed logs
+- **自动收集**：翻页收集所有粉丝，支持上千粉丝的账号
+- **批量拉黑**：逐个跳转到粉丝主页，点击屏蔽并确认
+- **防检测**：可配置延迟 + 随机抖动（Jitter），模拟人工操作节奏
+- **断点续传**：拉黑被限制用户自动跳过并记录，任务中断后自动恢复
+- **侧边栏模式**：右键扩展图标可打开 Side Panel，页面跳转时不关闭
+- **实时统计**：显示总数 / 已移除 / 已跳过
 
-## Installation
+## 安装
 
-1. Open Chrome and navigate to `chrome://extensions`
-2. Enable "Developer mode" (toggle in top right)
-3. Click "Load unpacked"
-4. Select the `/tmp/zhihu-cleaner` directory
-5. The extension icon will appear in your toolbar
+### 从 Chrome 商店安装（推荐）
 
-## Usage
+> 即将上架
 
-### Basic Usage
+### 开发者模式安装
 
-1. **Navigate to Zhihu** (zhihu.com)
-2. **Click the extension icon** in your toolbar
-3. **Click "Go to Followers"** to navigate to your followers page, or navigate manually
-4. **Set your preferred delay** (2000ms = 2 seconds between removals)
-5. **Click "Start"** to begin removing followers
-6. **Click "Stop"** anytime to pause the process
+1. 打开 Chrome，访问 `chrome://extensions`
+2. 开启右上角「开发者模式」
+3. 点击「加载已解压的扩展程序」，选择本项目文件夹
+4. 扩展图标出现在工具栏
 
-### Settings
+## 使用方法
 
-- **Delay**: Time between each removal action (500-10000ms)
-  - Higher values are safer but slower
-  - Default: 2000ms (2 seconds)
-- **Jitter**: Randomization percentage (0-50%)
-  - Adds randomness to delay for anti-detection
-  - Default: 20% (e.g., 2000ms ± 400ms = 1600-2400ms)
+1. 打开知乎任意页面
+2. 点击扩展图标，弹出控制面板
+3. 点击 **Start** 开始
+4. 扩展会自动：收集所有粉丝 → 逐个拉黑 → 显示进度
+5. 随时点击 **Stop** 停止
 
-### Safety Tips
+### 设置说明
 
-1. Start with **higher delays** (3000-5000ms) to avoid rate limits
-2. Use **jitter (20-30%)** to make actions appear more human-like
-3. **Stop immediately** if you see any warnings from Zhihu
-4. Don't run for extended periods without breaks
-5. The extension will pause automatically on errors
+| 设置 | 说明 | 默认值 |
+|------|------|--------|
+| Delay | 每次操作间隔（毫秒） | 2000 |
+| Jitter | 随机抖动百分比 | 20% |
 
-## Files
+Delay 设为 2000ms、Jitter 20% 时，实际间隔为 1600~2400ms 随机。
 
-- `manifest.json` - Extension configuration (Manifest V3)
-- `popup.html` - Popup interface
-- `popup.css` - Popup styling
-- `popup.js` - Popup logic and UI handling
-- `content.js` - Script that runs on Zhihu pages to remove followers
-- `background.js` - Service worker for extension lifecycle
-- `icons/` - Extension icons
+### 侧边栏模式
 
-## How It Works
+右键扩展图标 → 「打开侧边面板」，面板会在页面跳转时保持打开，方便监控进度。
 
-1. The **content script** is injected into Zhihu pages
-2. When you click **Start**, it:
-   - Finds follower list items on the page
-   - Clicks the "..." (more options) button for each follower
-   - Selects the "Remove follower" option
-   - Confirms the removal dialog
-   - Waits for the configured delay (with random jitter)
-   - Repeats for the next follower
-3. The **popup** shows real-time status and logs
+## 工作原理
 
-## Troubleshooting
+1. **收集阶段**：自动翻页遍历粉丝列表，收集所有粉丝的用户名
+2. **拉黑阶段**：按顺序访问每个粉丝主页，点击「屏蔽用户」→ 确认对话框
+3. 被限制的用户自动跳过并记录，下次运行时不再尝试
+4. Service Worker 后台驱动，即使页面跳转也不中断
 
-### "No active tab found"
-- Make sure you have a tab open and Zhihu is loaded
+## 注意事项
 
-### "Failed to communicate with page"
-- Refresh the Zhihu page and try again
+- 建议延迟不低于 2000ms，避免触发知乎频率限制
+- 长时间运行建议中间休息
+- 拉黑后粉丝会被解除关注关系，如需恢复需手动取消屏蔽
+- 请合理使用，遵守知乎用户协议
 
-### "No followers found"
-- Make sure you're on the followers page (click "Go to Followers")
-- Check that you actually have followers listed
+## 许可证
 
-### Buttons aren't being clicked
-- Zhihu may have changed their UI. The extension tries multiple selectors but may need updates.
-
-## Notes
-
-- This extension works with your own Zhihu account to manage your followers
-- Use responsibly and in accordance with Zhihu's terms of service
-- The creators are not responsible for any account restrictions
-
-## License
-
-MIT License - Use at your own risk
+MIT License

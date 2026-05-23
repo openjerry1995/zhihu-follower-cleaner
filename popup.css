@@ -8,8 +8,8 @@ body {
   width: 380px;
   min-height: 450px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  color: #e0e0e0;
+  background: #f5f6f7;
+  color: #1a1a1a;
 }
 
 .container {
@@ -22,28 +22,29 @@ body {
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .header h1 {
   font-size: 18px;
   font-weight: 600;
-  color: #00d4ff;
+  color: #0066ff;
 }
 
 .version {
   font-size: 11px;
-  color: #666;
-  background: #1a1a2e;
+  color: #999;
+  background: #e8e8e8;
   padding: 2px 6px;
   border-radius: 4px;
 }
 
 .control-panel {
-  background: #1e1e30;
+  background: #fff;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .status-indicator {
@@ -52,7 +53,7 @@ body {
   gap: 8px;
   margin-bottom: 16px;
   padding: 10px 14px;
-  background: #151522;
+  background: #f5f6f7;
   border-radius: 8px;
 }
 
@@ -60,56 +61,54 @@ body {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #666;
+  background: #bbb;
   transition: background 0.3s ease;
 }
 
 .status-dot.active {
-  background: #00ff88;
-  box-shadow: 0 0 10px #00ff88;
+  background: #00b85c;
+  box-shadow: 0 0 8px rgba(0, 184, 92, 0.4);
 }
 
 .status-dot.paused {
-  background: #ffaa00;
+  background: #f0a000;
 }
 
 .status-dot.error {
-  background: #ff4444;
+  background: #e04040;
 }
 
 #statusText {
   font-size: 13px;
   font-weight: 500;
+  color: #333;
 }
 
-.counter-section {
+.stats-section {
   display: flex;
-  justify-content: center;
+  justify-content: space-around;
   margin-bottom: 16px;
+  padding: 12px 8px;
+  background: #f5f6f7;
+  border-radius: 10px;
 }
 
-.counter {
+.stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 32px;
-  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
-  border-radius: 12px;
-  border: 2px solid #00d4ff33;
 }
 
-.counter-label {
-  font-size: 12px;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 4px;
-}
-
-.counter-value {
-  font-size: 36px;
+.stat-value {
+  font-size: 24px;
   font-weight: 700;
-  color: #00d4ff;
+  color: #0066ff;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
 }
 
 .settings-section {
@@ -125,33 +124,35 @@ body {
 
 .setting-row label {
   font-size: 12px;
-  color: #aaa;
+  color: #666;
   min-width: 80px;
 }
 
 .setting-row input[type="number"] {
   flex: 1;
-  background: #151522;
-  border: 1px solid #333;
+  background: #f5f6f7;
+  border: 1px solid #ddd;
   border-radius: 6px;
   padding: 8px 12px;
-  color: #e0e0e0;
+  color: #1a1a1a;
   font-size: 13px;
 }
 
 .setting-row input[type="number"]:focus {
   outline: none;
-  border-color: #00d4ff;
+  border-color: #0066ff;
+  background: #fff;
 }
 
 .delay-range {
   font-size: 10px;
-  color: #666;
+  color: #aaa;
 }
 
 .button-section {
   display: flex;
   gap: 8px;
+  margin-bottom: 10px;
 }
 
 .btn {
@@ -170,39 +171,45 @@ body {
   cursor: not-allowed;
 }
 
+.btn-full {
+  width: 100%;
+  padding: 10px 16px;
+}
+
 .btn-primary {
-  background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
-  color: #000;
+  background: #0066ff;
+  color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
+  background: #0052cc;
+  box-shadow: 0 2px 8px rgba(0, 102, 255, 0.3);
 }
 
 .btn-secondary {
-  background: #333;
-  color: #e0e0e0;
+  background: #e0e0e0;
+  color: #333;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #444;
+  background: #d0d0d0;
 }
 
 .btn-tertiary {
   background: transparent;
-  border: 1px solid #00d4ff;
-  color: #00d4ff;
+  border: 1px solid #0066ff;
+  color: #0066ff;
 }
 
 .btn-tertiary:hover:not(:disabled) {
-  background: #00d4ff22;
+  background: rgba(0, 102, 255, 0.08);
 }
 
 .log-section {
-  background: #1e1e30;
+  background: #fff;
   border-radius: 12px;
   padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .log-header {
@@ -215,13 +222,13 @@ body {
 .log-header span {
   font-size: 13px;
   font-weight: 600;
-  color: #aaa;
+  color: #666;
 }
 
 .btn-small {
   background: transparent;
-  border: 1px solid #444;
-  color: #888;
+  border: 1px solid #ddd;
+  color: #999;
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 11px;
@@ -230,12 +237,12 @@ body {
 }
 
 .btn-small:hover {
-  border-color: #666;
-  color: #aaa;
+  border-color: #bbb;
+  color: #666;
 }
 
 .log-container {
-  background: #0f0f1a;
+  background: #f5f6f7;
   border-radius: 8px;
   padding: 10px;
   max-height: 150px;
@@ -248,17 +255,17 @@ body {
 }
 
 .log-container::-webkit-scrollbar-track {
-  background: #1a1a2e;
+  background: #eee;
   border-radius: 3px;
 }
 
 .log-container::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #ccc;
   border-radius: 3px;
 }
 
 .log-container::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: #bbb;
 }
 
 .log-entry {
@@ -277,22 +284,30 @@ body {
 }
 
 .log-success {
-  color: #00ff88;
-  background: #00ff8811;
+  color: #00884a;
+  background: rgba(0, 184, 92, 0.1);
 }
 
 .log-error {
-  color: #ff4444;
-  background: #ff444411;
+  color: #cc2020;
+  background: rgba(224, 64, 64, 0.08);
 }
 
 .log-warning {
-  color: #ffaa00;
-  background: #ffaa0011;
+  color: #b07800;
+  background: rgba(240, 160, 0, 0.08);
 }
 
 .log-time {
-  color: #555;
+  color: #bbb;
   font-size: 10px;
   margin-right: 6px;
+}
+
+.tip {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #aaa;
+  text-align: center;
+  line-height: 1.4;
 }

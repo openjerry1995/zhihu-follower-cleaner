@@ -1,362 +1,324 @@
 // Content Script - Runs on Zhihu pages
-// Responsible for finding and clicking remove follower buttons
+// Removes followers via: block user -> unblock user
+// Uses chrome.storage to persist state across page navigations
 
 (function() {
   'use strict';
 
-  let isRunning = false;
-  let shouldStop = false;
-  let delay = 2000;
-  let jitterPercent = 20;
-  let removedCount = 0;
+  if (window.__zhihuCleanerLoaded) return;
+  window.__zhihuCleanerLoaded = true;
 
-  // Notify popup of status
+  const STATE_KEY = 'zhihuCleanerState';
+
   function notifyPopup(action, data = {}) {
-    chrome.runtime.sendMessage({
-      action,
-      ...data
-    }).catch(() => {
-      // Popup might be closed, ignore error
+    chrome.runtime.sendMessage({ action, ...data }).catch(() => {});
+  }
+
+  function log(message, type = 'info') {
+    console.log('[Zhihu Cleaner] ' + message);
+    notifyPopup('addLog', { message, type });
+  }
+
+  function getState() {
+    return new Promise(function(resolve) {
+      chrome.storage.local.get(STATE_KEY, function(result) {
+        resolve(result[STATE_KEY] || {});
+      });
     });
   }
 
-  // Get randomized delay with jitter
-  function getDelay() {
-    const jitter = delay * (jitterPercent / 100);
-    const minDelay = delay - jitter;
-    const maxDelay = delay + jitter;
-    return Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+  function setState(partial) {
+    return new Promise(function(resolve) {
+      chrome.storage.local.get(STATE_KEY, function(result) {
+        const current = result[STATE_KEY] || {};
+        const updated = Object.assign({}, current, partial);
+        chrome.storage.local.set({ [STATE_KEY]: updated }, resolve);
+      });
+    });
   }
 
-  // Sleep function
+  function clearState() {
+    return new Promise(function(resolve) {
+      chrome.storage.local.remove(STATE_KEY, resolve);
+    });
+  }
+
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Log to popup
-  function log(message, type = 'info') {
-    console.log(`[Zhihu Cleaner] ${message}`);
-    notifyPopup('addLog', { message, type });
+  function getDelay(baseDelay, jitterPercent) {
+    const jitter = baseDelay * (jitterPercent / 100);
+    const minDelay = baseDelay - jitter;
+    const maxDelay = baseDelay + jitter;
+    return Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
   }
 
-  // Update counter
-  function updateCounter() {
-    removedCount++;
-    notifyPopup('updateCounter', { count: removedCount });
-  }
-
-  // Find and click remove follower button for a specific list item
-  async function removeFollower listItem) {
-    try {
-      // Zhihu's DOM structure for followers list:
-      // Each follower is in a list item with various possible selectors
-
-      // Method 1: Look for the more options button (...)
-      // This is typically an icon button with aria-label or specific class
-      const moreButton = listItem.querySelector(`
-        button[aria-label*="更多"],
-        button[aria-label*="more"],
-        .List-itemToolbar button,
-        .Popover-button,
-        button[class*="More"],
-        button[class*="more"],
-        .Button--plain
-      `);
-
-      if (!moreButton) {
-        log('Could not find more options button', 'warning');
-        return false;
-      }
-
-      // Scroll item into view
-      listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      await sleep(500);
-
-      // Click the more button
-      moreButton.click();
-      await sleep(300);
-
-      // Look for remove follower option in the dropdown
-      // Wait for dropdown to appear
-      await sleep(500);
-
-      // Try to find the remove/unfollow option
-      const removeOption = findRemoveOption();
-
-      if (!removeOption) {
-        // Close the dropdown and try next
-        document.body.click();
-        await sleep(200);
-        log('No remove option found, skipping', 'warning');
-        return false;
-      }
-
-      // Click remove option
-      removeOption.click();
-      await sleep(500);
-
-      // Handle confirmation dialog if present
-      const confirmed = await handleConfirmationDialog();
-
-      if (confirmed) {
-        log(`Removed follower #${removedCount + 1}`, 'success');
-        updateCounter();
-        return true;
-      } else {
-        log('Remove action cancelled or failed', 'warning');
-        return false;
-      }
-
-    } catch (error) {
-      log(`Error removing follower: ${error.message}`, 'error');
-      return false;
-    }
-  }
-
-  // Find the remove option in dropdown menu
-  function findRemoveOption() {
-    // Zhihu uses various popup/overlay mechanisms
-    // Look in common dropdown containers
-    const selectors = [
-      // Direct dropdown menu items
-      `[aria-label="移除粉丝"]`,
-      `[aria-label="Remove"]`,
-      `button:contains("移除粉丝")`,
-      `a:contains("移除粉丝")`,
-      // Menu items in various containers
-      `.Popover-menu button`,
-      `.menu-item`,
-      `.MenuItem`,
-      `[role="menuitem"]`,
-    ];
-
-    // Check all possible dropdown menus
-    const menus = document.querySelectorAll(`
-      .Popover-menu,
-      .dropdown-menu,
-      [role="menu"],
-      .menu
-    `);
-
-    for (const menu of menus) {
-      if (menu.offsetParent === null) continue; // Skip hidden menus
-
-      // Look for remove follower text
-      const buttons = menu.querySelectorAll('button, a, div[role="menuitem"]');
-
-      for (const btn of buttons) {
-        const text = btn.textContent?.trim() || '';
-        if (text.includes('移除') || text.includes('删除') ||
-            text.includes('Remove') || text.includes('Delete')) {
-          return btn;
-        }
+  function findButtonByText(text) {
+    var buttons = document.querySelectorAll('button');
+    for (var i = 0; i < buttons.length; i++) {
+      if (buttons[i].textContent.trim().includes(text)) {
+        return buttons[i];
       }
     }
-
-    // Try query selector approach
-    for (const selector of selectors) {
-      try {
-        const el = document.querySelector(selector);
-        if (el && el.offsetParent !== null) {
-          // Check text content for remove-related keywords
-          const text = el.textContent?.trim() || '';
-          if (text.includes('移除') || text.includes('Remove')) {
-            return el;
-          }
-        }
-      } catch (e) {
-        // Invalid selector, continue
-      }
-    }
-
     return null;
   }
 
-  // Handle confirmation dialog
-  async function handleConfirmationDialog() {
-    await sleep(500);
-
-    // Look for confirmation dialog
-    const selectors = [
-      'button:contains("确认")',
-      'button:contains("确定")',
-      'button:contains("Confirm")',
-      '.Modal-confirmButton',
-      '.confirm-button',
-      '[data-confirm="true"]'
-    ];
-
-    // Check if dialog exists
-    const dialog = document.querySelector(`
-      .Modal,
-      .modal,
-      [role="dialog"],
-      .confirm-dialog
-    `);
-
-    if (!dialog || dialog.offsetParent === null) {
-      // Some actions might not require confirmation
-      return true;
-    }
-
-    // Find confirm button
-    const confirmButtons = document.querySelectorAll('button');
-    for (const btn of confirmButtons) {
-      const text = btn.textContent?.trim() || '';
-      if (text === '确认' || text === '确定' ||
-          text === 'Confirm' || text === 'OK') {
-        btn.click();
-        await sleep(500);
-        return true;
+  function findButtonInModal(text) {
+    var modal = document.querySelector('.Modal:not(.Modal-backdrop)');
+    if (!modal) return null;
+    var buttons = modal.querySelectorAll('button');
+    for (var i = 0; i < buttons.length; i++) {
+      if (buttons[i].textContent.trim() === text) {
+        return buttons[i];
       }
     }
-
-    return false;
+    return null;
   }
 
-  // Get all follower list items
-  function getFollowersList() {
-    // Zhihu uses various list containers
-    const selectors = [
-      '.List-item',
-      '.UserProfile-following-listItem',
-      '[data-za-extra-module="FollowingItem"]',
-      '.follower-item',
-      'li[class*="ListItem"]'
-    ];
-
-    for (const selector of selectors) {
-      const items = document.querySelectorAll(selector);
-      if (items.length > 0) {
-        return Array.from(items);
+  function getFollowerTokens() {
+    var items = document.querySelectorAll('.List-item .UserLink-link');
+    var tokens = [];
+    items.forEach(function(link) {
+      var href = link.getAttribute('href') || '';
+      var match = href.match(/people\/([^/?]+)/);
+      if (match && tokens.indexOf(match[1]) === -1) {
+        tokens.push(match[1]);
       }
-    }
-
-    return [];
+    });
+    return tokens;
   }
 
-  // Main removal loop
-  async function startRemoval() {
-    isRunning = true;
-    shouldStop = false;
+  // Main logic: check state and act accordingly
+  async function run() {
+    var state = await getState();
 
-    log('Starting follower removal...', 'info');
-    notifyPopup('updateStatus', { status: 'running', message: 'Running...' });
+    if (!state.running) return;
 
-    while (!shouldStop && isRunning) {
-      try {
-        // Get current list of followers
-        const followers = getFollowersList();
+    if (state.phase === 'scrapeFollowers') {
+      await scrapeFollowers(state);
+    } else if (state.phase === 'blockUser') {
+      await blockUser(state);
+    } else if (state.phase === 'unblockUser') {
+      await unblockUser(state);
+    }
+  }
 
-        if (followers.length === 0) {
-          log('No more followers found on current page', 'info');
+  async function scrapeFollowers(state) {
+    if (!window.location.href.includes('/followers')) {
+      // Not on followers page, navigate
+      log('Navigating to followers page...', 'info');
+      window.location.href = state.followersUrl;
+      return;
+    }
 
-          // Try to scroll down to load more
-          window.scrollBy(0, 500);
-          await sleep(2000);
+    await sleep(2000);
 
-          const moreFollowers = getFollowersList();
-          if (moreFollowers.length === 0) {
-            log('No followers found. Are you on the followers page?', 'warning');
-            break;
-          }
-          continue;
-        }
+    var tokens = getFollowerTokens();
+    log('Found ' + tokens.length + ' followers on page', 'info');
 
-        // Get first follower
-        const follower = followers[0];
-
-        // Try to remove this follower
-        const success = await removeFollower(follower);
-
-        // Wait before next action
-        const waitTime = getDelay();
-        log(`Waiting ${waitTime}ms...`, 'info');
-
-        // Check for stop signal during wait
-        const waitStart = Date.now();
-        while (Date.now() - waitStart < waitTime) {
-          if (shouldStop) {
-            log('Stopping...', 'warning');
-            break;
-          }
-          await sleep(100);
-        }
-
-        if (shouldStop) break;
-
-        // Scroll down to load more if needed
-        const scrollPercent = (window.scrollY + window.innerHeight) / document.body.scrollHeight;
-        if (scrollPercent > 0.9) {
-          window.scrollBy(0, 300);
-          await sleep(1000);
-        }
-
-      } catch (error) {
-        log(`Error in main loop: ${error.message}`, 'error');
-
-        // Pause on error
-        notifyPopup('updateStatus', { status: 'error', message: 'Error - paused' });
-        await sleep(3000);
-
-        if (!shouldStop) {
-          notifyPopup('updateStatus', { status: 'running', message: 'Running...' });
-        }
+    if (tokens.length === 0) {
+      // Scroll and retry
+      window.scrollBy(0, 800);
+      await sleep(2000);
+      tokens = getFollowerTokens();
+      if (tokens.length === 0) {
+        log('No more followers found. Done!', 'success');
+        await clearState();
+        notifyPopup('updateStatus', { status: 'idle', message: 'Finished' });
+        return;
       }
     }
 
-    isRunning = false;
-    notifyPopup('updateStatus', {
-      status: shouldStop ? 'idle' : 'idle',
-      message: shouldStop ? 'Stopped' : 'Finished'
+    // Pick first token that hasn't been skipped
+    var skipped = state.skippedTokens || [];
+    var token = null;
+    for (var i = 0; i < tokens.length; i++) {
+      if (skipped.indexOf(tokens[i]) === -1) {
+        token = tokens[i];
+        break;
+      }
+    }
+
+    if (!token) {
+      // All visible followers have been skipped/processed, scroll for more
+      log('All current followers processed, scrolling...', 'info');
+      window.scrollBy(0, 800);
+      await sleep(2000);
+      tokens = getFollowerTokens();
+      for (var j = 0; j < tokens.length; j++) {
+        if (skipped.indexOf(tokens[j]) === -1) {
+          token = tokens[j];
+          break;
+        }
+      }
+      if (!token) {
+        log('No more followers found. Done!', 'success');
+        await clearState();
+        notifyPopup('updateStatus', { status: 'idle', message: 'Finished' });
+        return;
+      }
+    }
+
+    log('Will block follower: ' + token, 'info');
+
+    await setState({
+      running: true,
+      phase: 'blockUser',
+      currentToken: token,
+      followersUrl: state.followersUrl || window.location.href,
+      removedCount: state.removedCount || 0,
+      skippedTokens: skipped,
+      delay: state.delay,
+      jitter: state.jitter
     });
 
-    if (removedCount > 0) {
-      log(`Completed. Removed ${removedCount} followers.`, 'success');
+    // Navigate to user profile
+    window.location.href = 'https://www.zhihu.com/people/' + token;
+  }
+
+  async function blockUser(state) {
+    await sleep(1500);
+
+    var blockBtn = findButtonByText('屏蔽用户');
+    if (!blockBtn) {
+      log('Block button not found for ' + state.currentToken + ', skipping (restricted user)', 'warning');
+      var skipped = state.skippedTokens || [];
+      skipped.push(state.currentToken);
+      await setState({
+        running: true,
+        phase: 'scrapeFollowers',
+        followersUrl: state.followersUrl,
+        removedCount: state.removedCount || 0,
+        skippedTokens: skipped,
+        delay: state.delay,
+        jitter: state.jitter
+      });
+      window.location.href = state.followersUrl;
+      return;
     }
+
+    blockBtn.click();
+    log('Clicked block for ' + state.currentToken, 'info');
+    await sleep(1000);
+
+    // Handle confirmation modal — click "确定" button
+    var confirmBtn = findButtonInModal('确定');
+    if (confirmBtn) {
+      confirmBtn.click();
+      log('Confirmed block for ' + state.currentToken, 'info');
+    } else {
+      log('No confirmation dialog found, continuing...', 'warning');
+    }
+    await sleep(1000);
+
+    await setState({
+      running: true,
+      phase: 'unblockUser',
+      currentToken: state.currentToken,
+      followersUrl: state.followersUrl,
+      removedCount: state.removedCount || 0,
+      skippedTokens: state.skippedTokens || [],
+      delay: state.delay,
+      jitter: state.jitter
+    });
+
+    // Stay on same page, switch to unblock phase
+    await unblockUser(await getState());
+  }
+
+  async function unblockUser(state) {
+    await sleep(500);
+
+    var unblockBtn = findButtonByText('取消屏蔽');
+    if (!unblockBtn) {
+      log('Unblock button not found', 'warning');
+    } else {
+      unblockBtn.click();
+      var newCount = (state.removedCount || 0) + 1;
+      log('Unblocked ' + state.currentToken + ' — removed #' + newCount, 'success');
+      notifyPopup('updateCounter', { count: newCount });
+      state.removedCount = newCount;
+    }
+
+    await sleep(500);
+
+    // Wait with jitter before returning
+    var waitTime = getDelay(state.delay || 2000, state.jitter || 20);
+    log('Waiting ' + waitTime + 'ms...', 'info');
+    await sleep(waitTime);
+
+    // Check if we should stop
+    var currentState = await getState();
+    if (!currentState.running) return;
+
+    await setState({
+      running: true,
+      phase: 'scrapeFollowers',
+      followersUrl: state.followersUrl,
+      removedCount: state.removedCount,
+      skippedTokens: state.skippedTokens || [],
+      delay: state.delay,
+      jitter: state.jitter
+    });
+
+    log('Returning to followers page...', 'info');
+    window.location.href = state.followersUrl;
   }
 
   // Message handler
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.action) {
       case 'start':
-        if (isRunning) {
-          sendResponse({ success: false, error: 'Already running' });
-          return true;
-        }
-
-        delay = message.delay || 2000;
-        jitterPercent = message.jitter || 20;
-
-        // Start removal process
-        startRemoval();
-
-        sendResponse({ success: true });
+        setState({
+          running: true,
+          phase: 'scrapeFollowers',
+          followersUrl: window.location.href,
+          removedCount: 0,
+          delay: message.delay || 2000,
+          jitter: message.jitter || 20
+        }).then(function() {
+          notifyPopup('updateStatus', { status: 'running', message: 'Running...' });
+          log('Starting follower removal...', 'info');
+          run();
+          sendResponse({ success: true });
+        });
         return true;
 
       case 'stop':
-        shouldStop = true;
-        isRunning = false;
-
-        log('Stopping...', 'warning');
-        sendResponse({ success: true });
+        clearState().then(function() {
+          log('Stopped', 'warning');
+          notifyPopup('updateStatus', { status: 'idle', message: 'Stopped' });
+          sendResponse({ success: true });
+        });
         return true;
 
       case 'getStatus':
-        sendResponse({
-          isRunning,
-          removedCount,
-          url: window.location.href
+        chrome.storage.local.get(STATE_KEY, function(result) {
+          var s = result[STATE_KEY] || {};
+          sendResponse({
+            isRunning: s.running || false,
+            removedCount: s.removedCount || 0,
+            url: window.location.href
+          });
         });
         return true;
 
       default:
         sendResponse({ success: false, error: 'Unknown action' });
     }
-
     return true;
   });
 
-  // Notify that content script is loaded
+  // On page load, check if there's an active task
+  chrome.storage.local.get(STATE_KEY, function(result) {
+    var state = result[STATE_KEY];
+    if (state && state.running) {
+      console.log('[Zhihu Cleaner] Resuming task, phase: ' + state.phase);
+      // Small delay to let page fully render
+      setTimeout(run, 1000);
+    }
+  });
+
   console.log('[Zhihu Cleaner] Content script loaded');
 })();

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +10,7 @@
   <div class="container">
     <div class="header">
       <h1>Zhihu Follower Cleaner</h1>
-      <span class="version">v1.0.0</span>
+      <span class="version">v1.1.0</span>
     </div>
 
     <div class="control-panel">
@@ -19,10 +19,18 @@
         <span id="statusText">Ready</span>
       </div>
 
-      <div class="counter-section">
-        <div class="counter">
-          <span class="counter-label">Removed</span>
-          <span class="counter-value" id="counterValue">0</span>
+      <div class="stats-section">
+        <div class="stat">
+          <span class="stat-value" id="totalValue">-</span>
+          <span class="stat-label">Total</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="counterValue">0</span>
+          <span class="stat-label">Removed</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="skippedValue">0</span>
+          <span class="stat-label">Skipped</span>
         </div>
       </div>
 
@@ -32,7 +40,6 @@
           <input type="number" id="delayInput" value="2000" min="500" max="10000" step="100">
           <span class="delay-range">500-10000</span>
         </div>
-
         <div class="setting-row">
           <label for="jitterInput">Jitter (%)</label>
           <input type="number" id="jitterInput" value="20" min="0" max="50" step="5">
@@ -43,8 +50,9 @@
       <div class="button-section">
         <button id="startBtn" class="btn btn-primary">Start</button>
         <button id="stopBtn" class="btn btn-secondary" disabled>Stop</button>
-        <button id="navigateBtn" class="btn btn-tertiary">Go to Followers</button>
       </div>
+
+      <button id="navigateBtn" class="btn btn-tertiary btn-full">Go to Followers</button>
     </div>
 
     <div class="log-section">
@@ -56,6 +64,8 @@
         <div class="log-entry log-info">Ready to start...</div>
       </div>
     </div>
+
+    <div class="tip">Right-click the extension icon to open as side panel, which stays open during navigation.</div>
   </div>
 
   <script src="popup.js"></script>
